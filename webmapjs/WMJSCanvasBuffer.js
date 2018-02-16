@@ -34,6 +34,9 @@ var WMJSCanvasBuffer = function (webmapJSCallback, _type, _imageStore, w, h) {
   this.imageLoadComplete = function (image) {
     statDivBufferImageLoaded();
     webmapJSCallback.triggerEvent('onimageload');
+    if (type === 'imagebuffer') {
+      webmapJSCallback.triggerEvent('onimagebufferimageload', image);
+    }
   };
 
   var statDivBufferImageLoaded = function () {
@@ -85,7 +88,7 @@ var WMJSCanvasBuffer = function (webmapJSCallback, _type, _imageStore, w, h) {
   // };
 
   this.display = function (newbbox, loadedbbox) {
-
+    let errorList = [];
     //console.log('======= WMJSCanvasBuffer:display'+newbbox);
     if ((newbbox && !loadedbbox)) {
       console.log('skipping WMJSCanvasBuffer:display because newbbox is undefined');
@@ -169,11 +172,19 @@ var WMJSCanvasBuffer = function (webmapJSCallback, _type, _imageStore, w, h) {
             ctx.drawImage(el, 0, 0, width, height);
           }
         }
-      } /*else {
-        error("<a target=\'_blank\' href='" + _this.layerstodisplay[j].getSrc() + "'>" + _this.layerstodisplay[j].getSrc() + '</a>', false);
-      }*/
+      } else {
+        errorList.push(_this.layerstodisplay[j]);
+      }
     }
     ctx.globalAlpha = 1;
+
+    /* Display errors */
+    if (type === 'imagebuffer') {
+      if( errorList.length > 0) {
+        webmapJSCallback.triggerEvent('canvasonerror', errorList);
+      }
+    }
+      
     if (type === 'imagebuffer') {
       webmapJSCallback.triggerEvent('beforecanvasdisplay', ctx);
     }
@@ -190,6 +201,9 @@ var WMJSCanvasBuffer = function (webmapJSCallback, _type, _imageStore, w, h) {
     _this.ready = true;
     for (var j = 0; j < _this.layers.length; j++) {
       _this.layerstodisplay[j] = _this.layers[j];
+      if(_this.layers[j].hasError()){
+         error("Unable to get image <a target=\'_blank\' href='" + _this.layerstodisplay[j].getSrc() + "'>" + _this.layerstodisplay[j].getSrc() + '</a>', false);
+      }
     }
     try {
       if (isDefined(_this.onLoadReadyFunction)) {
@@ -263,13 +277,14 @@ var WMJSCanvasBuffer = function (webmapJSCallback, _type, _imageStore, w, h) {
     }
   };
 
-  this.setSrc = function (layerIndex, imageSource, width, height) {
+  this.setSrc = function (layerIndex, imageSource, width, height, linkedInfo) {
     if (!isDefined(imageSource)) { console.log('undefined'); return; }
     while (layerIndex >= this.layers.length) {
       this.layers.push(defaultImage);
     }
     var image = imageStore.getImage(imageSource);
     image.setZIndex(layerIndex);
+    image.linkedInfo = linkedInfo;
     this.layers[layerIndex] = image;
   };
 
