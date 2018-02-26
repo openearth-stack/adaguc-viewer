@@ -4,8 +4,10 @@ WORKDIR /var/www/html
 
 # Install adaguc-viewer from context
 COPY . /var/www/html/adaguc-viewer
+RUN rm -rf /var/www/html/adaguc-viewer/index.html
+COPY Docker/config.* /var/www/html/adaguc-viewer/
+COPY Docker/index.html /var/www/html/adaguc-viewer/index.php
+COPY Docker/redirtoindex.html /var/www/html/index.html
 
-COPY config.php /var/www/html/adaguc-viewer/
 
-#docker build -t adaguc-viewer . 
-#docker run -e EXTERNALADDRESS="http://127.0.0.1:8080/" -p 8080:8080 -v $HOME/config:/config -it adaguc-viewer
+
