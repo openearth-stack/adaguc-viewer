@@ -1194,7 +1194,7 @@ function WMJSMap (_element, _xml2jsonrequestURL) {
   };
 
   this.getBBOX = function () {
-    return bbox;
+    return updateBBOX;
   };
 
   this.getProjection = function (srsName) {
@@ -1579,7 +1579,7 @@ function WMJSMap (_element, _xml2jsonrequestURL) {
     var drawDates = [];
     var lastTime = moment.utc(timeDimension.getValueForIndex(lastIndex));
     var begin = lastTime.subtract(hoursAgo, timeUnit);
-    while (lastIndex > 0) {
+    while (lastIndex >= 0) {
       lastTime = timeDimension.getValueForIndex(lastIndex--);
       if (!lastTime || lastTime === WMJSDateTooEarlyString || begin.isAfter(moment.utc(lastTime))) break;
       drawDates.unshift({ name: 'time', value: lastTime });
@@ -2269,7 +2269,6 @@ function WMJSMap (_element, _xml2jsonrequestURL) {
       mc.on('pinchstart', function (ev) { ev.preventDefault(); _map.pinchStart(ev.center.x, ev.center.y, ev); });
       mc.on('pinchmove', function (ev) { ev.preventDefault(); _map.pinchMove(ev.center.x, ev.center.y, ev); });
       mc.on('pinchend', function (ev) { ev.preventDefault(); _map.pinchEnd(ev.center.x, ev.center.y, ev); });
-      _map.hideControls();
     }
 
     _map.setMapModePan();
@@ -3266,7 +3265,16 @@ function WMJSMap (_element, _xml2jsonrequestURL) {
   this.proj4.srs = 'empty';
   this.proj4.projection = undefined;
   var longlat = new Proj4js.Proj('EPSG:4326');
-
+  
+  this.getProj4 = function() {
+    if (_map.proj4.srs != srs || !isDefined(this.proj4.projection)) {
+      _map.proj4.projection = new Proj4js.Proj(srs);
+      _map.proj4.srs = srs;
+    }
+    return {lonlat: longlat, proj4: _map.proj4.projection, Proj4js: Proj4js}
+  }
+  
+ 
   this.getPixelCoordFromLatLong = function (coordinates) {
     var p = new Proj4js.Point();
 
@@ -3496,7 +3504,7 @@ function WMJSMap (_element, _xml2jsonrequestURL) {
   };
 
   this.setDimension = function (name, value, triggerEvent) {
-    // debug("WebMapJS::setDimension('"+name+"','"+value+"')");
+    debug("WebMapJS::setDimension('"+name+"','"+value+"')");
     if (!isDefined(name) || !isDefined(value)) {
       error('Unable to set dimension with undefined value or name');
       return;

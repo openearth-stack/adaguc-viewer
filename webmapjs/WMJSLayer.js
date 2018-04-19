@@ -133,6 +133,19 @@ function WMJSLayer (options) {
       this.parentMaps[j].draw('WMJSLayer::draw::' + e);
     }
   };
+  
+  this.handleReferenceTime = function(name, value) {
+    if(name === 'reference_time'){
+      var timeDim = this.getDimension('time');
+      if (timeDim){
+//         console.log('from reftime setting time dim to ', value);
+        timeDim.setStartTime(value);
+        if (this.parentMaps && this.parentMaps.length>0){
+          this.parentMaps[0].getListener().triggerEvent('ondimchange','time');
+        }
+      }
+    }
+  };
 
   this.setDimension = function (name, value) {
     var dim;
@@ -146,6 +159,11 @@ function WMJSLayer (options) {
 
     dim.setValue(value);
 
+    this.handleReferenceTime(name, value);
+    
+    
+
+    
     if (dim.linked == true) {
       for (var j = 0; j < this.parentMaps.length; j++) {
         this.parentMaps[j].setDimension(name, dim.getValue());
@@ -185,11 +203,18 @@ function WMJSLayer (options) {
 
     var extents = toArray(jsonlayer.Extent);
     layer.dimensions = [];
+    var hasRefTimeDimension = false;
+
     for (var j = 0; j < dimensions.length; j++) {
-      var dim = new WMJSDimension();
+      var dim;
+      if (dimensions[j].attr.name.toLowerCase() === 'reference_time') {
+        hasRefTimeDimension = true;
+        dim = new WMJSDimension({ linked: false });
+      } else {
+        dim = new WMJSDimension();
+      }
       dim.name = dimensions[j].attr.name.toLowerCase();
       dim.units = dimensions[j].attr.units;
-
       // WMS 1.1.1 Mode:
       for (var i = 0; i < extents.length; i++) {
         if (extents[i].attr.name.toLowerCase() == dim.name) {
@@ -222,7 +247,7 @@ function WMJSLayer (options) {
 
       if (layer.parentMaps.length > 0) {
         var mapDim = layer.parentMaps[0].getDimension(dim.name);
-        if (isDefined(mapDim)) {
+        if (isDefined(mapDim) && mapDim.linked) {
           if (isDefined(mapDim.currentValue)) {
             defaultValue = dim.getClosestValue(mapDim.currentValue);
             debug('WMJSLayer::configureDimensions Dimension ' + dim.name + ' default value [' + defaultValue + '] is based on map value [' + mapDim.currentValue + ']');
@@ -234,7 +259,7 @@ function WMJSLayer (options) {
         debug('WMJSLayer::configureDimensions Layer has no parentmaps');
       }
       // debug("Dimension "+dim.name+" default value is "+defaultValue);
-      dim.currentValue = defaultValue;
+      dim.setValue(defaultValue);
 
       dim.parentLayer = layer;
       if (isDefined(dim.values)) {
@@ -242,6 +267,11 @@ function WMJSLayer (options) {
       } else {
         error('Skipping dimension ' + dim.name);
       }
+    }
+
+    if (hasRefTimeDimension) {
+      var refTimeDimension = layer.getDimension('reference_time');
+      this.handleReferenceTime('reference_time', refTimeDimension.getValue());
     }
   };
 
